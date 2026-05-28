@@ -1,48 +1,36 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Theme, Ch1Ending, Ch2Ending, MainTab, SubTab, Ch2State } from "./game/gameTypes";
+import type { Theme, Ch1Ending, Ch2Ending, Ch3Ending, MainTab, SubTab, Ch2State } from "./game/gameTypes";
 import { INITIAL_CH2_STATE } from "./game/gameTypes";
 import { FloatingBg, Chapter1 } from "./game/Chapter1";
 import { Chapter2 } from "./game/Chapter2";
+import { Chapter3 } from "./game/Chapter3";
 import { EndingsTab, SettingsTab, GuideTab, HeroTab, NewsTab, BackgroundMusic } from "./game/GameTabs";
 
 // ─── SAVE/LOAD ────────────────────────────────────────────────────────────────
 
-const SAVE_KEY = "kotost_save_v2";
+const SAVE_KEY = "kotost_save_v3";
+const UNLOCK_CODE = "5267";
 
 interface SaveData {
   ch1Obtained: Ch1Ending[];
   ch2Obtained: Ch2Ending[];
+  ch3Obtained: Ch3Ending[];
   ch2State: Ch2State;
   theme: Theme;
   musicOn: boolean;
   musicVolume: number;
+  allUnlocked: boolean;
 }
 
 function loadSave(): Partial<SaveData> {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+  } catch (_e) { return {}; }
 }
 
 function writeSave(data: SaveData) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_e) { /* ignore */ }
-}
-
-// ─── CH3 MODAL ────────────────────────────────────────────────────────────────
-
-function Ch3Modal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}
-        style={{ textAlign: "center" }}>
-        <div className="modal-icon">🔮</div>
-        <h2 className="modal-title" style={{ color: "#a855f7" }}>Скоро в игре!</h2>
-        <p className="modal-text">Глава 3 находится в разработке. Следи за обновлениями в разделе «Новости»!</p>
-        <button className="btn-ghost" onClick={onClose}>Закрыть</button>
-      </div>
-    </div>
-  );
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
@@ -52,25 +40,32 @@ export default function Index() {
 
   const [mainTab, setMainTab] = useState<MainTab>("ch1");
   const [subTab, setSubTab] = useState<SubTab>("play");
-  const [ch1Obtained, setCh1Obtained] = useState<Set<Ch1Ending>>(
-    () => new Set(saved.ch1Obtained ?? [])
-  );
-  const [ch2Obtained, setCh2Obtained] = useState<Set<Ch2Ending>>(
-    () => new Set(saved.ch2Obtained ?? [])
-  );
-  // ⬇️ Ch2 состояние живёт здесь — не сбрасывается при смене вкладок
+  const [ch1Obtained, setCh1Obtained] = useState<Set<Ch1Ending>>(() => new Set(saved.ch1Obtained ?? []));
+  const [ch2Obtained, setCh2Obtained] = useState<Set<Ch2Ending>>(() => new Set(saved.ch2Obtained ?? []));
+  const [ch3Obtained, setCh3Obtained] = useState<Set<Ch3Ending>>(() => new Set(saved.ch3Obtained ?? []));
   const [ch2State, setCh2State] = useState<Ch2State>(() => ({
     ...(saved.ch2State ?? INITIAL_CH2_STATE),
-    dayStartTs: Date.now(), // всегда сбрасываем timestamp при загрузке, иначе пропустит кучу тиков
+    dayStartTs: Date.now(),
   }));
   const [theme, setTheme] = useState<Theme>(saved.theme ?? "dark");
   const [musicOn, setMusicOn] = useState(saved.musicOn ?? false);
   const [musicVolume, setMusicVolume] = useState(saved.musicVolume ?? 0.4);
-  const [showCh3Modal, setShowCh3Modal] = useState(false);
+  const [allUnlocked, setAllUnlocked] = useState(saved.allUnlocked ?? false);
 
-  const ch1Complete = ch1Obtained.has("king");
+  const ch1Complete = ch1Obtained.has("king") || allUnlocked;
+  const ch3Unlocked = ch2Obtained.has("days5") || allUnlocked;
 
-  // ─── APPLY THEME ─────────────────────────────────────────────────────────────
+  // ─── МАСТЕР ГЛАВА 2: все 3 обычные концовки ──────────────────────────────
+  useEffect(() => {
+    const has3 = ch2Obtained.has("days5") && ch2Obtained.has("days10") && ch2Obtained.has("days15");
+    if (has3 && !ch2Obtained.has("master2")) {
+      setTimeout(() => {
+        setCh2Obtained((old) => new Set([...old, "master2"]));
+      }, 3000);
+    }
+  }, [ch2Obtained]);
+
+  // ─── APPLY THEME ──────────────────────────────────────────────────────────
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "light") {
@@ -100,25 +95,26 @@ export default function Index() {
     writeSave({
       ch1Obtained: [...ch1Obtained] as Ch1Ending[],
       ch2Obtained: [...ch2Obtained] as Ch2Ending[],
+      ch3Obtained: [...ch3Obtained] as Ch3Ending[],
       ch2State,
       theme,
       musicOn,
       musicVolume,
+      allUnlocked,
     });
-  }, [ch1Obtained, ch2Obtained, ch2State, theme, musicOn, musicVolume]);
+  }, [ch1Obtained, ch2Obtained, ch3Obtained, ch2State, theme, musicOn, musicVolume, allUnlocked]);
 
   useEffect(() => {
     const id = setInterval(saveNow, 5000);
     return () => clearInterval(id);
   }, [saveNow]);
 
-  // Сохраняем при уходе со страницы
   useEffect(() => {
     window.addEventListener("beforeunload", saveNow);
     return () => window.removeEventListener("beforeunload", saveNow);
   }, [saveNow]);
 
-  // ─── NAV ─────────────────────────────────────────────────────────────────────
+  // ─── NAV ──────────────────────────────────────────────────────────────────
   const navItems: { id: MainTab; label: string }[] = [
     { id: "ch1",      label: "Глава 1" },
     { id: "ch2",      label: "Глава 2" },
@@ -134,6 +130,8 @@ export default function Index() {
     { id: "hero",    label: "Котость" },
   ];
 
+  const totalEndings = ch1Obtained.size + ch2Obtained.size + ch3Obtained.size;
+
   return (
     <div className="game-root">
       <FloatingBg />
@@ -147,18 +145,21 @@ export default function Index() {
             <span className="logo-title">Котость</span>
           </div>
           <nav className="game-nav">
-            {navItems.map(({ id, label }) => (
-              <button key={id}
-                className={`nav-btn${mainTab === id ? " nav-active" : ""}${id === "ch2" && !ch1Complete ? " nav-locked" : ""}${id === "ch3" ? " nav-locked" : ""}`}
-                onClick={() => {
-                  if (id === "ch3") { setShowCh3Modal(true); return; }
-                  if (id === "ch2" && !ch1Complete) return;
-                  setMainTab(id);
-                }}>
-                {id === "ch2" && !ch1Complete ? "🔒 Глава 2" : label}
-                {id === "ch3" ? " 🔒" : ""}
-              </button>
-            ))}
+            {navItems.map(({ id, label }) => {
+              const isCh2Locked = id === "ch2" && !ch1Complete;
+              const isCh3Locked = id === "ch3" && !ch3Unlocked;
+              return (
+                <button key={id}
+                  className={`nav-btn${mainTab === id ? " nav-active" : ""}${isCh2Locked || isCh3Locked ? " nav-locked" : ""}`}
+                  onClick={() => {
+                    if (isCh2Locked || isCh3Locked) return;
+                    setMainTab(id);
+                  }}>
+                  {isCh2Locked ? "🔒 Глава 2" : isCh3Locked ? "🔒 Глава 3" : label}
+                  {id === "ch3" && ch3Unlocked ? " 🧪" : ""}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
@@ -171,8 +172,8 @@ export default function Index() {
                   className={`sub-nav-btn${subTab === id ? " sub-nav-active" : ""}`}
                   onClick={() => setSubTab(id)}>
                   {label}
-                  {id === "endings" && (ch1Obtained.size + ch2Obtained.size) > 0 && (
-                    <span className="nav-badge">{ch1Obtained.size + ch2Obtained.size}</span>
+                  {id === "endings" && totalEndings > 0 && (
+                    <span className="nav-badge">{totalEndings}</span>
                   )}
                 </button>
               ))}
@@ -192,12 +193,27 @@ export default function Index() {
           </div>
         )}
 
+        {/* ─ CH3 locked ─ */}
+        {mainTab === "ch3" && !ch3Unlocked && (
+          <div className="locked-chapter">
+            <div className="locked-emoji">🔮</div>
+            <h2 className="locked-title">Глава 3 заблокирована</h2>
+            <p className="locked-desc">Проживи <b>5 дней</b> с Котостью во Второй Главе, чтобы открыть Главу 3.</p>
+          </div>
+        )}
+
         {/* ─ SETTINGS ─ */}
         {mainTab === "settings" && (
           <SettingsTab
             theme={theme} setTheme={setTheme} ch1Complete={ch1Complete}
             musicOn={musicOn} setMusicOn={setMusicOn}
             musicVolume={musicVolume} setMusicVolume={setMusicVolume}
+            unlockCode={UNLOCK_CODE}
+            allUnlocked={allUnlocked}
+            onUnlockAll={() => {
+              setAllUnlocked(true);
+              setCh1Obtained((old) => new Set([...old, "king"]));
+            }}
           />
         )}
 
@@ -217,9 +233,14 @@ export default function Index() {
           />
         )}
 
+        {/* ─ CH3 PLAY ─ */}
+        {mainTab === "ch3" && ch3Unlocked && (
+          <Chapter3 ch3Obtained={ch3Obtained} setCh3Obtained={setCh3Obtained} />
+        )}
+
         {/* ─ ENDINGS ─ */}
         {(mainTab === "ch1" || mainTab === "ch2") && subTab === "endings" && (
-          <EndingsTab ch1Obtained={ch1Obtained} ch2Obtained={ch2Obtained} />
+          <EndingsTab ch1Obtained={ch1Obtained} ch2Obtained={ch2Obtained} ch3Obtained={ch3Obtained} />
         )}
 
         {/* ─ GUIDE ─ */}
@@ -228,8 +249,6 @@ export default function Index() {
         {/* ─ HERO ─ */}
         {(mainTab === "ch1" || mainTab === "ch2") && subTab === "hero" && <HeroTab />}
       </main>
-
-      {showCh3Modal && <Ch3Modal onClose={() => setShowCh3Modal(false)} />}
     </div>
   );
 }

@@ -1335,3 +1335,192 @@
 .news-list-items li strong {
   color: var(--game-fg);
 }
+
+/* ===================== CHAPTER 3 ===================== */
+.ch3-wrapper {
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: fadeInUp 0.5s ease both;
+}
+.beta-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  color: #a78bfa;
+}
+.beta-tag {
+  font-weight: 800;
+  font-size: 0.72rem;
+  background: rgba(139, 92, 246, 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ch3-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+.ch3-countdown-card {
+  border-color: rgba(139, 92, 246, 0.4);
+}
+.ch3-scene-emoji {
+  font-size: 4rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.4));
+  animation: catFloat 3s ease-in-out infinite;
+}
+.ch3-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--game-fg);
+  letter-spacing: -0.02em;
+}
+.ch3-text {
+  font-size: 0.95rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 400px;
+}
+.ch3-start-btn {
+  margin-top: 0.5rem;
+}
+.ch3-progress {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+.ch3-countdown-ring {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid rgba(139, 92, 246, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  animation: pulse 1s ease-in-out infinite;
+}
+.ch3-countdown-num {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #a78bfa;
+  line-height: 1;
+}
+.ch3-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.ch3-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 380px;
+}
+.ch3-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem;
+  border-radius: 18px;
+  border: 1.5px solid;
+  background: transparent;
+  cursor: pointer;
+  font-family: "Golos Text", sans-serif;
+  text-align: left;
+  transition: all 0.22s;
+}
+.ch3-choice-gentle {
+  border-color: rgba(244, 114, 182, 0.4);
+  color: #f472b6;
+}
+.ch3-choice-gentle:hover {
+  background: rgba(244, 114, 182, 0.12);
+  border-color: #f472b6;
+  transform: translateY(-2px);
+}
+.ch3-choice-cruel {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+.ch3-choice-cruel:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  transform: translateY(-2px);
+}
+.ch3-choice-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+.ch3-choice-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: block;
+}
+.ch3-choice-desc {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  display: block;
+}
+.ch3-ending-screen {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  animation: fadeInUp 0.5s ease both;
+}
+.ch3-ending-master {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.2);
+}
+.ch3-ending-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+.ch3-ending-rarity {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.ch3-ending-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.ch3-ending-text {
+  font-size: 0.95rem;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 360px;
+}
+.section-sub {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  margin-top: -0.5rem;
+}
