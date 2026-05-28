@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { CH2_ENDINGS, DAY_DURATION_MS, DECAY, clamp } from "./gameTypes";
-import type { Ch2Ending } from "./gameTypes";
+import { useEffect, useRef, useCallback } from "react";
+import { CH2_ENDINGS, DAY_DURATION_MS, TICK_INTERVAL_MS, DECAY_PER_TICK, clamp, INITIAL_CH2_STATE } from "./gameTypes";
+import type { Ch2Ending, Ch2State } from "./gameTypes";
 import { Ch2EndingModal, CatRanAwayModal, DayTransition } from "./GameModals";
 
 // ─── STAT BAR ─────────────────────────────────────────────────────────────────
@@ -21,75 +21,79 @@ function StatBar({ label, value, icon, color }: { label: string; value: number; 
 }
 
 // ─── CHAPTER 2 ────────────────────────────────────────────────────────────────
+// Всё состояние живёт в родителе (Index) — смена вкладки НЕ сбрасывает прогресс.
+// Тик работает через useEffect здесь, но state хранится снаружи.
 
-export function Chapter2({ ch2Obtained, setCh2Obtained }: {
+interface Chapter2Props {
+  ch2State: Ch2State;
+  setCh2State: React.Dispatch<React.SetStateAction<Ch2State>>;
   ch2Obtained: Set<Ch2Ending>;
   setCh2Obtained: React.Dispatch<React.SetStateAction<Set<Ch2Ending>>>;
-}) {
-  const [day, setDay] = useState(1);
-  const [stats, setStats] = useState({ hunger: 80, cleanliness: 80, energy: 80, mood: 80 });
-  const [dayProgress, setDayProgress] = useState(0); // 0..1 внутри текущего дня
-  const [showTransition, setShowTransition] = useState(false);
-  const [transitionFrom, setTransitionFrom] = useState(1);
-  const [catRanAway, setCatRanAway] = useState<string | null>(null);
-  const [activeEnding, setActiveEnding] = useState<Ch2Ending | null>(null);
-  const [gameActive] = useState(true);
+}
+
+export function Chapter2({ ch2State, setCh2State, ch2Obtained, setCh2Obtained }: Chapter2Props) {
+  const { day, stats, dayProgress, showTransition, transitionFrom, catRanAway, activeEnding } = ch2State;
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dayStartRef = useRef<number>(Date.now());
+  const dayStartRef = useRef<number>(ch2State.dayStartTs || Date.now());
 
-  // Запуск/остановка тика
+  // Синхронизируем ref при восстановлении из сохранения
   useEffect(() => {
-    if (!gameActive || showTransition || catRanAway || activeEnding) {
+    if (ch2State.dayStartTs) dayStartRef.current = ch2State.dayStartTs;
+  }, []);
+
+  // Тик — всегда активен пока нет паузы (переход/уход/концовка)
+  useEffect(() => {
+    if (showTransition || catRanAway || activeEnding) {
       if (tickRef.current) clearInterval(tickRef.current);
       return;
     }
-    dayStartRef.current = Date.now();
-    tickRef.current = setInterval(() => {
-      const elapsed = Date.now() - dayStartRef.current;
-      const pct = Math.min(elapsed / DAY_DURATION_MS, 1);
-      setDayProgress(pct);
+    // Возобновляем — пересчитываем реальное время старта дня
+    const now = Date.now();
+    const elapsed = Math.min(now - dayStartRef.current, DAY_DURATION_MS);
+    const startPct = elapsed / DAY_DURATION_MS;
 
-      setStats((s) => {
+    tickRef.current = setInterval(() => {
+      const nowTs = Date.now();
+      const pct = Math.min((nowTs - dayStartRef.current) / DAY_DURATION_MS, 1);
+
+      setCh2State((s) => {
+        if (s.showTransition || s.catRanAway || s.activeEnding) return s;
+
         const next = {
-          hunger:      clamp(s.hunger      - DECAY.hunger),
-          cleanliness: clamp(s.cleanliness - DECAY.cleanliness),
-          energy:      clamp(s.energy      - DECAY.energy),
-          mood:        clamp(s.mood        - DECAY.mood),
+          hunger:      clamp(s.stats.hunger      - DECAY_PER_TICK),
+          cleanliness: clamp(s.stats.cleanliness - DECAY_PER_TICK),
+          energy:      clamp(s.stats.energy      - DECAY_PER_TICK * 0.7),
+          mood:        clamp(s.stats.mood        - DECAY_PER_TICK * 0.5),
         };
+
         // Котость уходит если голод или чистота = 0
         if (next.hunger <= 0) {
-          setCatRanAway("Котость была очень голодна, и вы не покормили её.");
-          return s;
+          return { ...s, stats: next, catRanAway: "Котость была очень голодна, и вы не покормили её." };
         }
         if (next.cleanliness <= 0) {
-          setCatRanAway("Котость была такая грязная, что убежала купаться самостоятельно.");
-          return s;
+          return { ...s, stats: next, catRanAway: "Котость была такая грязная, что убежала купаться самостоятельно." };
         }
-        return next;
-      });
 
-      if (pct >= 1) {
-        // День окончен → переход
-        setTransitionFrom(day);
-        setShowTransition(true);
-      }
-    }, 1000);
+        if (pct >= 1) {
+          return { ...s, stats: next, dayProgress: 1, showTransition: true, transitionFrom: s.day };
+        }
+
+        return { ...s, stats: next, dayProgress: pct };
+      });
+    }, TICK_INTERVAL_MS);
+
+    // Сразу обновляем прогресс при монтировании чтобы не было прыжка
+    setCh2State((s) => ({ ...s, dayProgress: startPct }));
 
     return () => { if (tickRef.current) clearInterval(tickRef.current); };
-  }, [gameActive, showTransition, catRanAway, activeEnding, day]);
+  }, [showTransition, catRanAway, activeEnding, setCh2State]);
 
   const handleDayDone = useCallback(() => {
-    setShowTransition(false);
     const nextDay = transitionFrom + 1;
-    setDay(nextDay);
-    setDayProgress(0);
     dayStartRef.current = Date.now();
-    // Восстановить немного энергии после сна
-    setStats((s) => ({ ...s, energy: clamp(s.energy + 30) }));
 
-    // Проверяем концовки
-    const newDay = transitionFrom; // сколько дней прожили
+    const newDay = transitionFrom;
     let earned: Ch2Ending | null = null;
     if (newDay >= 15 && !ch2Obtained.has("days15")) earned = "days15";
     else if (newDay >= 10 && !ch2Obtained.has("days10")) earned = "days10";
@@ -97,22 +101,36 @@ export function Chapter2({ ch2Obtained, setCh2Obtained }: {
 
     if (earned) {
       setCh2Obtained((old) => new Set([...old, earned!]));
-      setTimeout(() => setActiveEnding(earned), 300);
+      setCh2State((s) => ({
+        ...s,
+        day: nextDay,
+        dayProgress: 0,
+        showTransition: false,
+        stats: { ...s.stats, energy: clamp(s.stats.energy + 30) },
+        activeEnding: earned,
+        dayStartTs: dayStartRef.current,
+      }));
+    } else {
+      setCh2State((s) => ({
+        ...s,
+        day: nextDay,
+        dayProgress: 0,
+        showTransition: false,
+        stats: { ...s.stats, energy: clamp(s.stats.energy + 30) },
+        dayStartTs: dayStartRef.current,
+      }));
     }
-  }, [transitionFrom, ch2Obtained, setCh2Obtained]);
+  }, [transitionFrom, ch2Obtained, setCh2Obtained, setCh2State]);
 
   const handleCatBack = () => {
-    setCatRanAway(null);
-    setDay(1);
-    setDayProgress(0);
-    setStats({ hunger: 80, cleanliness: 80, energy: 80, mood: 80 });
     dayStartRef.current = Date.now();
+    setCh2State({ ...INITIAL_CH2_STATE, dayStartTs: dayStartRef.current });
   };
 
-  const feed  = () => setStats((s) => ({ ...s, hunger: clamp(s.hunger + 30), mood: clamp(s.mood + 5) }));
-  const wash  = () => setStats((s) => ({ ...s, cleanliness: clamp(s.cleanliness + 35) }));
-  const sleep = () => setStats((s) => ({ ...s, energy: clamp(s.energy + 40), mood: clamp(s.mood + 10) }));
-  const play  = () => setStats((s) => ({ ...s, mood: clamp(s.mood + 25), energy: clamp(s.energy - 10) }));
+  const feed  = () => setCh2State((s) => ({ ...s, stats: { ...s.stats, hunger: clamp(s.stats.hunger + 30), mood: clamp(s.stats.mood + 5) } }));
+  const wash  = () => setCh2State((s) => ({ ...s, stats: { ...s.stats, cleanliness: clamp(s.stats.cleanliness + 35) } }));
+  const sleep = () => setCh2State((s) => ({ ...s, stats: { ...s.stats, energy: clamp(s.stats.energy + 40), mood: clamp(s.stats.mood + 10) } }));
+  const play  = () => setCh2State((s) => ({ ...s, stats: { ...s.stats, mood: clamp(s.stats.mood + 25), energy: clamp(s.stats.energy - 10) } }));
 
   const catEmoji = stats.mood > 60 ? "😸" : stats.mood > 30 ? "😼" : "😿";
   const dayPct = Math.round(dayProgress * 100);
@@ -161,7 +179,7 @@ export function Chapter2({ ch2Obtained, setCh2Obtained }: {
 
       {showTransition && <DayTransition from={transitionFrom} to={transitionFrom + 1} onDone={handleDayDone} />}
       {catRanAway && <CatRanAwayModal reason={catRanAway} onClose={handleCatBack} />}
-      {activeEnding && <Ch2EndingModal ending={activeEnding} onClose={() => setActiveEnding(null)} />}
+      {activeEnding && <Ch2EndingModal ending={activeEnding} onClose={() => setCh2State((s) => ({ ...s, activeEnding: null }))} />}
     </>
   );
 }

@@ -3,8 +3,30 @@
 export type Theme = "dark" | "light" | "custom";
 export type Ch1Ending = "good" | "bad" | "terrible" | "mercy" | "king";
 export type Ch2Ending = "days5" | "days10" | "days15";
-export type MainTab = "ch1" | "ch2" | "ch3" | "settings";
+export type MainTab = "ch1" | "ch2" | "ch3" | "settings" | "news";
 export type SubTab = "play" | "endings" | "guide" | "hero";
+
+export interface Ch2State {
+  day: number;
+  stats: { hunger: number; cleanliness: number; energy: number; mood: number };
+  dayProgress: number;
+  showTransition: boolean;
+  transitionFrom: number;
+  catRanAway: string | null;
+  activeEnding: Ch2Ending | null;
+  dayStartTs: number;
+}
+
+export const INITIAL_CH2_STATE: Ch2State = {
+  day: 1,
+  stats: { hunger: 80, cleanliness: 80, energy: 80, mood: 80 },
+  dayProgress: 0,
+  showTransition: false,
+  transitionFrom: 1,
+  catRanAway: null,
+  activeEnding: null,
+  dayStartTs: Date.now(),
+};
 
 export const CAT_EMOJIS = ["😺","😸","😹","😻","😼","😽","🐱","🙀","😿","😾","🐈","🐾","💛","🧡","🫶","✨","💫","🌟","🐈‍⬛","❤️"];
 
@@ -27,7 +49,7 @@ export const CH2_ENDINGS: Record<Ch2Ending, { title: string; text: string; color
 };
 
 export const DAY_DURATION_MS = 5 * 60 * 1000; // 5 минут = 1 день
-
-export const DECAY = { hunger: 0.05, cleanliness: 0.025, energy: 0.02, mood: 0.015 };
+export const TICK_INTERVAL_MS = 2000;           // тик каждые 2 секунды
+export const DECAY_PER_TICK = 1.5;              // -1.5% за тик
 
 export function clamp(v: number) { return Math.max(0, Math.min(100, v)); }

@@ -1,25 +1,76 @@
-import { useState, useEffect } from "react";
-import { useUnisender } from "@/components/extensions/unisender-go/useUnisender";
-import type { Theme, Ch1Ending, Ch2Ending, MainTab, SubTab } from "./game/gameTypes";
+import { useState, useEffect, useCallback } from "react";
+import type { Theme, Ch1Ending, Ch2Ending, MainTab, SubTab, Ch2State } from "./game/gameTypes";
+import { INITIAL_CH2_STATE } from "./game/gameTypes";
 import { FloatingBg, Chapter1 } from "./game/Chapter1";
 import { Chapter2 } from "./game/Chapter2";
-import { EndingsTab, SettingsTab, GuideTab, HeroTab } from "./game/GameTabs";
+import { EndingsTab, SettingsTab, GuideTab, HeroTab, NewsTab, BackgroundMusic } from "./game/GameTabs";
 
-const UNISENDER_URL = "https://functions.poehali.dev/6b87f2ee-3635-45cb-8cd7-e0389c0354e9";
+// ─── SAVE/LOAD ────────────────────────────────────────────────────────────────
+
+const SAVE_KEY = "kotost_save_v2";
+
+interface SaveData {
+  ch1Obtained: Ch1Ending[];
+  ch2Obtained: Ch2Ending[];
+  ch2State: Ch2State;
+  theme: Theme;
+  musicOn: boolean;
+  musicVolume: number;
+}
+
+function loadSave(): Partial<SaveData> {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function writeSave(data: SaveData) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_e) { /* ignore */ }
+}
+
+// ─── CH3 MODAL ────────────────────────────────────────────────────────────────
+
+function Ch3Modal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}
+        style={{ textAlign: "center" }}>
+        <div className="modal-icon">🔮</div>
+        <h2 className="modal-title" style={{ color: "#a855f7" }}>Скоро в игре!</h2>
+        <p className="modal-text">Глава 3 находится в разработке. Следи за обновлениями в разделе «Новости»!</p>
+        <button className="btn-ghost" onClick={onClose}>Закрыть</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
 
 export default function Index() {
+  const saved = loadSave();
+
   const [mainTab, setMainTab] = useState<MainTab>("ch1");
   const [subTab, setSubTab] = useState<SubTab>("play");
-  const [ch1Obtained, setCh1Obtained] = useState<Set<Ch1Ending>>(new Set());
-  const [ch2Obtained, setCh2Obtained] = useState<Set<Ch2Ending>>(new Set());
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [sendingEmail, setSendingEmail] = useState(false);
-
-  const { sendEmail } = useUnisender({ apiUrl: UNISENDER_URL });
+  const [ch1Obtained, setCh1Obtained] = useState<Set<Ch1Ending>>(
+    () => new Set(saved.ch1Obtained ?? [])
+  );
+  const [ch2Obtained, setCh2Obtained] = useState<Set<Ch2Ending>>(
+    () => new Set(saved.ch2Obtained ?? [])
+  );
+  // ⬇️ Ch2 состояние живёт здесь — не сбрасывается при смене вкладок
+  const [ch2State, setCh2State] = useState<Ch2State>(() => ({
+    ...(saved.ch2State ?? INITIAL_CH2_STATE),
+    dayStartTs: Date.now(), // всегда сбрасываем timestamp при загрузке, иначе пропустит кучу тиков
+  }));
+  const [theme, setTheme] = useState<Theme>(saved.theme ?? "dark");
+  const [musicOn, setMusicOn] = useState(saved.musicOn ?? false);
+  const [musicVolume, setMusicVolume] = useState(saved.musicVolume ?? 0.4);
+  const [showCh3Modal, setShowCh3Modal] = useState(false);
 
   const ch1Complete = ch1Obtained.has("king");
 
-  // Apply theme
+  // ─── APPLY THEME ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "light") {
@@ -44,30 +95,35 @@ export default function Index() {
     }
   }, [theme]);
 
-  const handleSaveEmail = async (email: string) => {
-    setSendingEmail(true);
-    try {
-      await sendEmail({
-        to_email: email,
-        subject: "Добро пожаловать в мир Котости!",
-        body_html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#0a0a0a;color:#f5f5f5;border-radius:16px">
-          <h1 style="color:#f97316">🐱 Котость — Глава 1</h1>
-          <p>Спасибо, что подключили электронную почту!</p>
-          ${ch1Complete ? `<p>🎉 Поздравляем! Вы прошли <b>Главу 1</b> полностью и открыли <b>Главу 2</b>!</p>
-          <p>Котость рада видеть вас снова в новой главе 😸</p>` : ""}
-          <p style="color:#6b7280;font-size:0.85rem;margin-top:24px">Котость Глава 1 · poehali.dev</p>
-        </div>`,
-        tags: ["kotost", "welcome"],
-      });
-    } finally {
-      setSendingEmail(false);
-    }
-  };
+  // ─── AUTOSAVE каждые 5 секунд ─────────────────────────────────────────────
+  const saveNow = useCallback(() => {
+    writeSave({
+      ch1Obtained: [...ch1Obtained] as Ch1Ending[],
+      ch2Obtained: [...ch2Obtained] as Ch2Ending[],
+      ch2State,
+      theme,
+      musicOn,
+      musicVolume,
+    });
+  }, [ch1Obtained, ch2Obtained, ch2State, theme, musicOn, musicVolume]);
 
+  useEffect(() => {
+    const id = setInterval(saveNow, 5000);
+    return () => clearInterval(id);
+  }, [saveNow]);
+
+  // Сохраняем при уходе со страницы
+  useEffect(() => {
+    window.addEventListener("beforeunload", saveNow);
+    return () => window.removeEventListener("beforeunload", saveNow);
+  }, [saveNow]);
+
+  // ─── NAV ─────────────────────────────────────────────────────────────────────
   const navItems: { id: MainTab; label: string }[] = [
     { id: "ch1",      label: "Глава 1" },
     { id: "ch2",      label: "Глава 2" },
     { id: "ch3",      label: "Глава 3" },
+    { id: "news",     label: "📰 Новости" },
     { id: "settings", label: "⚙️ Настройки" },
   ];
 
@@ -81,6 +137,7 @@ export default function Index() {
   return (
     <div className="game-root">
       <FloatingBg />
+      <BackgroundMusic on={musicOn} volume={musicVolume} />
 
       {/* ─ TOP NAV ─ */}
       <header className="game-header">
@@ -94,7 +151,7 @@ export default function Index() {
               <button key={id}
                 className={`nav-btn${mainTab === id ? " nav-active" : ""}${id === "ch2" && !ch1Complete ? " nav-locked" : ""}${id === "ch3" ? " nav-locked" : ""}`}
                 onClick={() => {
-                  if (id === "ch3") return;
+                  if (id === "ch3") { setShowCh3Modal(true); return; }
                   if (id === "ch2" && !ch1Complete) return;
                   setMainTab(id);
                 }}>
@@ -104,7 +161,8 @@ export default function Index() {
             ))}
           </nav>
         </div>
-        {/* SUB NAV for ch1/ch2 */}
+
+        {/* SUB NAV для ch1/ch2 */}
         {(mainTab === "ch1" || mainTab === "ch2") && (
           <div className="sub-nav-bar">
             <div className="sub-nav-inner">
@@ -125,15 +183,6 @@ export default function Index() {
 
       <main className="game-main">
 
-        {/* ─ CH3 locked ─ */}
-        {mainTab === "ch3" && (
-          <div className="locked-chapter">
-            <div className="locked-emoji">🔮</div>
-            <h2 className="locked-title">Скоро в игре!</h2>
-            <p className="locked-desc">Глава 3 находится в разработке. Следи за обновлениями!</p>
-          </div>
-        )}
-
         {/* ─ CH2 locked ─ */}
         {mainTab === "ch2" && !ch1Complete && (
           <div className="locked-chapter">
@@ -145,9 +194,15 @@ export default function Index() {
 
         {/* ─ SETTINGS ─ */}
         {mainTab === "settings" && (
-          <SettingsTab theme={theme} setTheme={setTheme} ch1Complete={ch1Complete}
-            sendingEmail={sendingEmail} onSaveEmail={handleSaveEmail} />
+          <SettingsTab
+            theme={theme} setTheme={setTheme} ch1Complete={ch1Complete}
+            musicOn={musicOn} setMusicOn={setMusicOn}
+            musicVolume={musicVolume} setMusicVolume={setMusicVolume}
+          />
         )}
+
+        {/* ─ NEWS ─ */}
+        {mainTab === "news" && <NewsTab />}
 
         {/* ─ CH1 PLAY ─ */}
         {mainTab === "ch1" && subTab === "play" && (
@@ -156,7 +211,10 @@ export default function Index() {
 
         {/* ─ CH2 PLAY ─ */}
         {mainTab === "ch2" && ch1Complete && subTab === "play" && (
-          <Chapter2 ch2Obtained={ch2Obtained} setCh2Obtained={setCh2Obtained} />
+          <Chapter2
+            ch2State={ch2State} setCh2State={setCh2State}
+            ch2Obtained={ch2Obtained} setCh2Obtained={setCh2Obtained}
+          />
         )}
 
         {/* ─ ENDINGS ─ */}
@@ -165,15 +223,13 @@ export default function Index() {
         )}
 
         {/* ─ GUIDE ─ */}
-        {(mainTab === "ch1" || mainTab === "ch2") && subTab === "guide" && (
-          <GuideTab />
-        )}
+        {(mainTab === "ch1" || mainTab === "ch2") && subTab === "guide" && <GuideTab />}
 
         {/* ─ HERO ─ */}
-        {(mainTab === "ch1" || mainTab === "ch2") && subTab === "hero" && (
-          <HeroTab />
-        )}
+        {(mainTab === "ch1" || mainTab === "ch2") && subTab === "hero" && <HeroTab />}
       </main>
+
+      {showCh3Modal && <Ch3Modal onClose={() => setShowCh3Modal(false)} />}
     </div>
   );
 }

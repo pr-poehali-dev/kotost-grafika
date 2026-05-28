@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CH1_ENDINGS, CH2_ENDINGS } from "./gameTypes";
 import type { Ch1Ending, Ch2Ending, Theme } from "./gameTypes";
 import { Ch1EndingModal, Ch2EndingModal } from "./GameModals";
@@ -73,23 +73,20 @@ export function EndingsTab({ ch1Obtained, ch2Obtained }: { ch1Obtained: Set<Ch1E
 
 // ─── SETTINGS TAB ─────────────────────────────────────────────────────────────
 
-export function SettingsTab({ theme, setTheme, ch1Complete, sendingEmail, onSaveEmail }:
-  { theme: Theme; setTheme: (t: Theme) => void; ch1Complete: boolean; sendingEmail: boolean; onSaveEmail: (email: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [emailSaved, setEmailSaved] = useState(false);
+export function SettingsTab({ theme, setTheme, ch1Complete, musicOn, setMusicOn, musicVolume, setMusicVolume }:
+  {
+    theme: Theme; setTheme: (t: Theme) => void; ch1Complete: boolean;
+    musicOn: boolean; setMusicOn: (v: boolean) => void;
+    musicVolume: number; setMusicVolume: (v: number) => void;
+  }) {
   const [customBg, setCustomBg] = useState("#1a0a2e");
   const [customAccent, setCustomAccent] = useState("#f97316");
-
-  const handleSave = () => {
-    if (!email.includes("@")) return;
-    onSaveEmail(email);
-    setEmailSaved(true);
-  };
 
   return (
     <div className="settings-wrapper">
       <h2 className="section-title">⚙️ Настройки</h2>
 
+      {/* Тема */}
       <div className="settings-section">
         <div className="settings-label">🎨 Тема</div>
         <div className="theme-grid">
@@ -108,7 +105,6 @@ export function SettingsTab({ theme, setTheme, ch1Complete, sendingEmail, onSave
             {!ch1Complete && <span className="theme-lock-hint">Пройди Главу 1</span>}
           </button>
         </div>
-
         {theme === "custom" && ch1Complete && (
           <div className="custom-theme-row">
             <label className="color-pick-label">
@@ -123,19 +119,157 @@ export function SettingsTab({ theme, setTheme, ch1Complete, sendingEmail, onSave
         )}
       </div>
 
+      {/* Музыка */}
       <div className="settings-section">
-        <div className="settings-label">📧 Email-уведомления <span className="optional-tag">по желанию</span></div>
-        <p className="settings-hint">Получай письма о прохождении глав и открытии новых концовок.</p>
-        {emailSaved ? (
-          <div className="email-saved">✅ Email сохранён! Письмо отправлено.</div>
-        ) : (
-          <div className="email-row">
-            <input className="email-input" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <button className="btn-primary" onClick={handleSave} disabled={sendingEmail || !email.includes("@")}>
-              {sendingEmail ? "..." : "Сохранить"}
-            </button>
+        <div className="settings-label">🎵 Музыка</div>
+        <div className="music-row">
+          <button
+            className={`music-toggle-btn${musicOn ? " music-on" : ""}`}
+            onClick={() => setMusicOn(!musicOn)}>
+            {musicOn ? "🔊 Включена" : "🔇 Выключена"}
+          </button>
+          {musicOn && (
+            <div className="volume-row">
+              <span className="volume-label">🔉</span>
+              <input
+                type="range" min={0} max={100} value={Math.round(musicVolume * 100)}
+                onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                className="volume-slider"
+              />
+              <span className="volume-label">🔊</span>
+              <span className="volume-val">{Math.round(musicVolume * 100)}%</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Gmail */}
+      <div className="settings-section">
+        <div className="settings-label">
+          <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="Google" style={{ borderRadius: 3 }} />
+          Gmail для уведомлений
+          <span className="optional-tag">по желанию</span>
+        </div>
+        <p className="settings-hint">Введи свой Gmail-адрес и получай письма о прохождении глав.</p>
+        <GmailInput ch1Complete={ch1Complete} />
+      </div>
+    </div>
+  );
+}
+
+function GmailInput({ ch1Complete }: { ch1Complete: boolean }) {
+  const [email, setEmail] = useState(() => localStorage.getItem("kotost_gmail") || "");
+  const [saved, setSaved] = useState(!!localStorage.getItem("kotost_gmail"));
+
+  const handleSave = () => {
+    if (!email.toLowerCase().endsWith("@gmail.com")) return;
+    localStorage.setItem("kotost_gmail", email);
+    setSaved(true);
+  };
+
+  const handleEdit = () => setSaved(false);
+
+  if (saved) {
+    return (
+      <div className="gmail-saved-row">
+        <span className="email-saved">✅ {email}</span>
+        <button className="btn-ghost" style={{ padding: "0.35rem 0.9rem", fontSize: "0.82rem" }} onClick={handleEdit}>Изменить</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="email-row">
+      <input
+        className="email-input" type="email"
+        placeholder="yourname@gmail.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button
+        className="btn-primary"
+        onClick={handleSave}
+        disabled={!email.toLowerCase().endsWith("@gmail.com")}>
+        Сохранить
+      </button>
+    </div>
+  );
+}
+
+// ─── NEWS TAB ─────────────────────────────────────────────────────────────────
+
+const NEWS = [
+  {
+    date: "28 мая 2025",
+    version: "v1.2",
+    tag: "Обновление",
+    tagColor: "#06b6d4",
+    title: "🐾 Глава 2 — Уход за Котостью",
+    content: [
+      "Добавлена **Глава 2** — полноценный симулятор ухода за Котостью!",
+      "Следи за 4 параметрами: голод, чистота, энергия, настроение.",
+      "Каждый день длится 5 минут реального времени. Параметры снижаются каждые 2 секунды.",
+      "Если не следить — Котость уйдёт, и дни сбросятся.",
+      "3 новые концовки: Первые шаги (5 дней), Крепкая дружба (10 дней), Навсегда вместе (15 дней).",
+      "Добавлены Настройки: темы оформления (тёмная / светлая / своя), фоновая музыка.",
+      "Прогресс игры теперь сохраняется автоматически.",
+    ],
+  },
+  {
+    date: "20 мая 2025",
+    version: "v1.1",
+    tag: "Обновление",
+    tagColor: "#a855f7",
+    title: "🔒 Скрытые концовки и система вкладок",
+    content: [
+      "Добавлены 2 скрытые концовки: Ужасная и Милосердие.",
+      "При получении всех 4 концовок — через 3 секунды открывается легендарная концовка «Король Котостей».",
+      "Вкладка «Концовки» теперь показывает все полученные концовки Главы 1 и 2.",
+      "Гайд по концовкам — подробное описание как получить каждую.",
+      "Раздел «Персонаж» с информацией о Котости.",
+    ],
+  },
+  {
+    date: "15 мая 2025",
+    version: "v1.0",
+    tag: "Релиз",
+    tagColor: "#f97316",
+    title: "🚀 Котость — Глава 1. Релиз!",
+    content: [
+      "Первый выпуск игры «Котость» — интерактивная история про легендарного интернет-мема!",
+      "**Основная механика:** ты встречаешь Котость на улице и решаешь её судьбу — забрать домой или нет.",
+      "2 базовые концовки: Хорошая (🏠 забрал домой) и Плохая (😿 оставил на улице).",
+      "Плавающие эмодзи-коты на фоне, анимации и модальные окна с концовками.",
+      "Счётчик прогресса концовок прямо в игре.",
+      "Сайт полностью адаптирован под мобильные устройства.",
+    ],
+  },
+];
+
+export function NewsTab() {
+  return (
+    <div className="news-wrapper">
+      <h2 className="section-title">📰 Новости</h2>
+      <p className="section-sub">История обновлений игры Котость</p>
+      <div className="news-list">
+        {NEWS.map((item, i) => (
+          <div key={i} className="news-card">
+            <div className="news-header">
+              <span className="news-tag" style={{ background: item.tagColor + "22", color: item.tagColor, border: `1px solid ${item.tagColor}44` }}>
+                {item.tag} {item.version}
+              </span>
+              <span className="news-date">{item.date}</span>
+            </div>
+            <h3 className="news-title">{item.title}</h3>
+            <ul className="news-list-items">
+              {item.content.map((line, j) => (
+                <li key={j} dangerouslySetInnerHTML={{
+                  __html: line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                }} />
+              ))}
+            </ul>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -195,4 +329,36 @@ export function HeroTab() {
       </div>
     </div>
   );
+}
+
+// ─── BACKGROUND MUSIC PLAYER ─────────────────────────────────────────────────
+// Использует публичный royalty-free трек через Audio API
+
+export function BackgroundMusic({ on, volume }: { on: boolean; volume: number }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audioRef.current) {
+      const audio = new Audio("https://cdn.pixabay.com/audio/2022/10/16/audio_a39e95a7b3.mp3");
+      audio.loop = true;
+      audio.volume = volume;
+      audioRef.current = audio;
+    }
+    if (on) {
+      audioRef.current.play().catch(() => {});
+    } else {
+      audioRef.current.pause();
+    }
+    return () => {};
+  }, [on]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    return () => { audioRef.current?.pause(); };
+  }, []);
+
+  return null;
 }
