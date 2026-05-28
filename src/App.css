@@ -1,11 +1,25 @@
+/* ===================== CSS VARIABLES ===================== */
+:root {
+  --game-bg: #0a0a0a;
+  --game-fg: #f5f5f5;
+  --card-bg: rgba(20, 20, 20, 0.92);
+  --card-border: rgba(249, 115, 22, 0.2);
+  --muted: #9ca3af;
+  --custom-bg: #1a0a2e;
+  --custom-accent: #f97316;
+}
+
 /* ===================== GAME ROOT ===================== */
 .game-root {
   min-height: 100vh;
-  background: #0a0a0a;
-  color: #f5f5f5;
+  background: var(--game-bg);
+  color: var(--game-fg);
   font-family: "Golos Text", sans-serif;
   position: relative;
   overflow: hidden;
+  transition:
+    background 0.4s ease,
+    color 0.4s ease;
 }
 
 /* ===================== ANIMATED BACKGROUND ===================== */
@@ -191,8 +205,8 @@
 }
 
 .scene-card {
-  background: rgba(20, 20, 20, 0.92);
-  border: 1px solid rgba(249, 115, 22, 0.2);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 24px;
   padding: 2.5rem 2rem;
   text-align: center;
@@ -777,4 +791,434 @@
   color: #9ca3af;
   font-size: 0.97rem;
   line-height: 1.65;
+}
+
+/* ===================== SUB NAV ===================== */
+.sub-nav-bar {
+  background: rgba(10, 10, 10, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0 1.5rem;
+}
+.sub-nav-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.4rem 0;
+  flex-wrap: wrap;
+}
+.sub-nav-btn {
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: "Golos Text", sans-serif;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.sub-nav-btn:hover {
+  color: var(--game-fg);
+  background: rgba(255, 255, 255, 0.05);
+}
+.sub-nav-active {
+  color: #f97316 !important;
+  background: rgba(249, 115, 22, 0.1) !important;
+  border-color: rgba(249, 115, 22, 0.25) !important;
+}
+
+/* ===================== NAV LOCKED ===================== */
+.nav-locked {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+.nav-locked:hover {
+  background: transparent !important;
+  color: #9ca3af !important;
+}
+
+/* ===================== LOCKED CHAPTER ===================== */
+.locked-chapter {
+  text-align: center;
+  animation: fadeInUp 0.4s ease both;
+}
+.locked-emoji {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+.locked-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--game-fg);
+  margin-bottom: 0.5rem;
+}
+.locked-desc {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ===================== PENDING KING HINT ===================== */
+.pending-king-hint {
+  margin-top: 1.2rem;
+  color: #f59e0b;
+  font-size: 0.95rem;
+  font-weight: 600;
+  animation: sparkle 1.2s ease-in-out infinite;
+}
+
+/* ===================== ENDINGS CHAPTER LABEL ===================== */
+.endings-chapter-label {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+/* ===================== CHAPTER 2 ===================== */
+.ch2-wrapper {
+  width: 100%;
+  max-width: 480px;
+  animation: fadeInUp 0.5s ease both;
+}
+
+.ch2-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.ch2-day-badge {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ch2-day-timer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-end;
+}
+.ch2-timer-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ch2-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
+  border-radius: 999px;
+  transition: width 0.8s linear;
+}
+.ch2-timer-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ch2-cat-display {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+.ch2-cat-emoji {
+  font-size: 5rem;
+  animation: catPulse 3s ease-in-out infinite;
+  display: block;
+}
+.ch2-cat-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f97316;
+  margin-top: 0.3rem;
+}
+
+.ch2-stats {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+/* stat2 rows */
+.stat2-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.stat2-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.stat2-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  width: 5rem;
+  flex-shrink: 0;
+}
+.stat2-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.stat2-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.stat2-val {
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: 2.5rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ch2-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.ch2-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 0.75rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--game-fg);
+  cursor: pointer;
+  font-family: "Golos Text", sans-serif;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease;
+  line-height: 1.5;
+  text-align: center;
+}
+.ch2-btn:hover {
+  transform: scale(1.06) translateY(-2px);
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.35);
+}
+.ch2-btn:active {
+  transform: scale(0.96);
+}
+
+/* ===================== DAY TRANSITION ===================== */
+.day-transition-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(16px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayIn 0.3s ease both;
+}
+.day-transition-content {
+  text-align: center;
+  animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.day-number-old {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #6b7280;
+  opacity: 0.6;
+}
+.day-arrow {
+  font-size: 2rem;
+  color: #f97316;
+  margin: 0.5rem 0;
+  animation: arrowBounce 0.8s ease-in-out infinite;
+}
+@keyframes arrowBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+.day-number-new {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #f97316;
+  text-shadow: 0 0 40px rgba(249, 115, 22, 0.5);
+}
+.day-sub {
+  color: #9ca3af;
+  font-size: 1rem;
+  margin-top: 0.75rem;
+}
+
+/* ===================== SETTINGS ===================== */
+.settings-wrapper {
+  width: 100%;
+  max-width: 520px;
+  animation: fadeInUp 0.5s ease both;
+}
+.settings-section {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.settings-label {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--game-fg);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.settings-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.optional-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--game-fg);
+  cursor: pointer;
+  font-family: "Golos Text", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  position: relative;
+}
+.theme-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.theme-active {
+  border-color: rgba(249, 115, 22, 0.5) !important;
+  background: rgba(249, 115, 22, 0.1) !important;
+}
+.theme-locked {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+.theme-preview {
+  width: 3rem;
+  height: 2rem;
+  border-radius: 8px;
+  display: block;
+}
+.theme-lock-hint {
+  position: absolute;
+  bottom: -1.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  color: #f97316;
+  white-space: nowrap;
+}
+
+.custom-theme-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+.color-pick-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.color-pick-label input[type="color"] {
+  width: 3.5rem;
+  height: 2.2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: none;
+}
+
+.email-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.email-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: var(--game-fg);
+  font-family: "Golos Text", sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.email-input:focus {
+  border-color: rgba(249, 115, 22, 0.5);
+}
+.email-input::placeholder {
+  color: #6b7280;
+}
+.email-saved {
+  color: #22c55e;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ===================== ABOUT CARD VARS ===================== */
+.about-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.hero-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
 }
